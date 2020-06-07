@@ -1,0 +1,296 @@
+#!/usr/bin/python
+
+from scipy.signal import butter, sosfilt, sosfreqz
+import os
+import numpy
+import scipy.io.wavfile
+import scipy.signal
+import sys
+import PIL
+import subprocess
+import argparse
+from PIL import Image
+from PIL import ImageEnhance
+import imageio
+
+class APT_signal(object):
+    # The audio should get resampled to 20.8 kHz if not there natively
+    SAMPLE_RATE = 20800
+
+    def __init__ (self, wavIN):
+        # Grab the raw .wav
+        (rate, self.signal) = scipy.io.wavfile.read(wavIN)
+
+        # Enforce mono
+        mono = True
+        if len(self.signal.shape) > 1:
+            if self.signal.shape[1] > 1:
+                mono = False
+                print("Supplied signal has {}".format(self.signal.shape[1]) + " channels, downmixing to mono...")
+                wavIN_MONO = wavIN[:-4] + '_MONO.wav'
+                # Create the sox code for channels to remix
+                channels = "1"
+                for i in range(2,self.signal.shape[1]):
+                    channels = channels + "," + str(i)
+                # Call sox to remix
+                subprocess.call(["sox", wavIN, wavIN_MONO, "remix", channels])
+                (rate, self.signal) = scipy.io.wavfile.read(wavIN_MONO)
+                print("Done.\n")
+
+        # Enforce samplerate
+        goodRate = True
+        if rate != self.SAMPLE_RATE:
+            goodRate = False
+            print("Supplied signal has samplerate {}".format(rate) + " Hz, downsampling to {}".format(self.SAMPLE_RATE) + " Hz...")
+            wavIN_goodRATE = wavIN[:-4] + '_goodRATE.wav'
+            if mono:
+                subprocess.call(["sox", wavIN, "-D", "-b 16", "-r", str(self.SAMPLE_RATE), wavIN_goodRATE])
+            else:
+                subprocess.call(["sox", wavIN_MONO, "-D", "-b 16", "-r", str(self.SAMPLE_RATE), wavIN_goodRATE])
+            (rate, self.signal) = scipy.io.wavfile.read(wavIN_goodRATE)
+            print("Done.\n")
+
+        # Remove any files we generated along the way
+        if not mono:
+            subprocess.call(["rm", wavIN_MONO])
+        if not goodRate:
+            subprocess.call(["rm", wavIN_goodRATE])
+
+
+    def decode(self, outfile=None):
+
+        #Bandpass filter
+        if not filter is None:
+            def butter_bandpass_filter(data, lowcut, highcut, fs, order=6):
+
+                def butter_bandpass(lowcut, highcut, fs, order=6):
+                    nyq = 0.5 * fs
+                    low = lowcut / nyq
+                    high = highcut / nyq
+                    sos = butter(order, low, analog=False, btype='lowpass', output='sos')
+                    return sos
+
+                sos = butter_bandpass(lowcut, highcut, fs, order=order)
+                y = sosfilt(sos, data)
+                return y
+
+            lowcut = 2300
+            highcut = 2500
+            fs = 20800
+            print("Applying bandpass filter")
+            signalButter = butter_bandpass_filter(self.signal, lowcut, highcut, fs)
+            print("Done.\n")
+
+        # Take the Hilbert transform
+        print("Taking Hilbert transform...")
+        signalHilbert = scipy.signal.hilbert(self.signal)
+        print("Done.\n")
+
+        # Median filter
+        print("Taking median filter...")
+        signalMed = scipy.signal.medfilt(numpy.abs(signalHilbert), 7)
+        print("Done.\n")
+
+        # Calculate how many elements off our reshaped array will be
+        print("Calculating necessary truncation...")
+        elementDiff = len(signalMed) - ((len(signalMed) // 5)*5)
+        print("Done.\n")
+
+        # Truncate the filtered signal to that number of elements
+        print("Truncating signal...")
+        signalMedTrunc = signalMed[:len(signalMed)-elementDiff]
+        print("Done.\n")
+
+        # Reshape the truncated filtered signal to have five columns
+        print("Reshaping signal...")
+        signalReshaped = signalMedTrunc.reshape((len(signalMed) // 5, 5))
+        print("Done.\n")
+
+        # Digitize the reshaped signal
+        print("Digitizing signal...")
+        signalDigitized = self._digitize(signalReshaped[:, 2])
+        print("Done.\n")
+
+        # Sync the scanlines
+        print("Synchronizing scanlines...")
+        matrix = self._reshape(signalDigitized)
+        print("Done.\n")
+
+        # Create image with data
+        print("Forming image...")
+        image = PIL.Image.fromarray(matrix)
+        if not outfile is None:
+            image.save(outfile + "_original.png")
+            outfile1 = (outfile + "_original.png")
+        print("Done.\n")
+
+        #Combine channels
+        if not cmbn is None:
+            print("Combining the channels")
+            img = imageio.imread(outfile1)
+            height, width = img.shape
+            width_cutoff = width // 2
+            s1 = img[:, :width_cutoff]
+            s2 = img[:, width_cutoff:]
+            imageio.imsave(outfile + "_puoli1.png", s1)
+            imageio.imsave(outfile + "_puoli2.png", s2)
+            imR = Image.open(outfile + "_puoli1.png")
+            imGB = Image.open(outfile + "_puoli2.png")
+            imC = Image.merge('RGB', (imR, imGB, imGB))
+            imC.save(outfile + "_combined.png")
+            outfile2 = (outfile + "_combined.png")
+            subprocess.call(["rm", outfile + "_puoli1.png"])
+            subprocess.call(["rm", outfile + "_puoli2.png"])
+            print("Done.\n")
+
+        #Sharpen image
+        if not shrp is float(1.0):
+            print("Sharpening image...")
+            if not cmbn is None:
+                sharpen = Image.open(outfile2)
+            else:
+                sharpen = Image.open(outfile1)
+            sharpen.load()
+            enh1 = ImageEnhance.Sharpness(sharpen)
+            Enhanced = enh1.enhance(shrp).save(outfile + "_s.png")
+            print("Done.\n")
+
+        #Contrast adjustment
+        if not contr is float(1.0):
+            print("Contrast adjustment")
+            if not shrp is float(1.0):
+                contrast = Image.open(outfile + "_s.png")
+            elif not cmbn is None:
+                contrast = Image.open(outfile2)
+            else:
+                contrast = Image.opem(outfile1)
+            contrast.load()
+            enh2 = ImageEnhance.Contrast(contrast)
+            Contrasted = enh2.enhance(contr).save(outfile + "_Contrast.png")
+            print("Done.\n")
+        return matrix
+
+
+    def _digitize(self, signal, plow=1, phigh=95):
+        # Calculate low and high reach of signal
+        (low, high) = numpy.percentile(signal, (plow, phigh))
+        delta = high - low
+
+        # Normalize the signal to px luminance values, discretize
+        data = numpy.round(255 * (signal - low) / delta)
+        data[data < 0] = 0
+        data[data > 255] = 255
+        return data.astype(numpy.uint8)
+
+    def _reshape(self, signal):
+        # We are searching for a sync frame, which will appear as seven pulses
+        # with some black pixels
+        syncA = [0, 128, 255, 128]*7 + [0]*7
+
+        # Track maximum correlations found: (index, val)
+        peaks = [(0, 0)]
+
+        # There is a minimum distance between peaks, probably more than 2000
+        mindistance = 1750
+
+        # Downshift values to get meaningful correlation
+        signalshifted = [x-128 for x in signal]
+        syncA = [x-128 for x in syncA]
+        for i in range(len(signal)-len(syncA)):
+            corr = numpy.dot(syncA, signalshifted[i:i+len(syncA)])
+
+            # If previous peak is too far, we keep it but add this value as new
+            if i - peaks[-1][0] > mindistance:
+                peaks.append((i, corr))
+            elif corr > peaks[-1][1]:
+                peaks[-1] = (i, corr)
+
+        # Create image matrix, starting each line at the peaks
+        matrix = []
+        for i in range(len(peaks) - 1):
+            matrix.append(signal[peaks[i][0] : peaks[i][0] + 2080])
+
+        return numpy.array(matrix)
+
+if __name__ == '__main__':
+    # Construct the command parser
+    parser = argparse.ArgumentParser()
+    # Add sharpening option
+    parser.add_argument(
+        "-s", "--sharpen",
+        help="Sharpen image, default = 1.0",
+        action="store",
+        default="1.0",
+        dest="do_sharp"
+    )
+    #Add combining option
+    parser.add_argument(
+        "-c", "--combine",
+        help="Combine the two channels using channel 1 as Green and Blue and using Channel 2 as Red",
+        action="store_true",
+        default=None,
+        dest="do_comb"
+    )
+    # Add filter option
+    parser.add_argument(
+        "-f", "--filter",
+        help="Apply a bandpass filter to the inout signal",
+        action="store_true",
+        default=None,
+        dest="do_filt"
+    )
+    # Add contrast option
+    parser.add_argument(
+        "-C", "--contrast",
+        help="Apply contrast adjustment, default value is 1.0",
+        action="store",
+        default="1.0",
+        dest="do_contr"
+    )
+    # Add decode option
+    parser.add_argument(
+        "-d", "--decode",
+        help="decode a .wav APT recording",
+        action="store",
+        default=None,
+        dest="decode_file"
+    )
+    # Add output option
+    parser.add_argument(
+        "-o", "--output",
+        help="specify output location",
+        action="store",
+        default=None,
+        dest="out_file"
+    )
+    # Store arguments to variable
+    parser.parse_args()
+    arguments = parser.parse_args()
+
+
+    # Here we check for the main flag options, in order of precedence
+
+    # -s, --sharpen
+    if arguments.do_sharp:
+        shrp = float(arguments.do_sharp)
+    # -c, --combine
+    if arguments.do_comb:
+        cmbn = float(arguments.do_comb)
+    if not arguments.do_comb:
+        cmbn = None
+    # -C, --contrast
+    if arguments.do_contr:
+        contr = float(arguments.do_contr)
+    # -f, --filter
+    if arguments.do_filt:
+       filter = int("1")
+    if not arguments.do_filt:
+       filter = None
+    # -d, --decode
+    if arguments.decode_file != None:
+        apt = APT_signal(arguments.decode_file)
+        outfile = arguments.out_file
+        apt.decode(outfile)
+    # No flags
+    else:
+        print("No arguments passed.")
