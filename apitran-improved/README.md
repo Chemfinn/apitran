@@ -55,7 +55,10 @@ Given a flag which creates output, this flag can be used to override the default
 ### ```-s --sharpen```
 Use this flag to add sharpening to the output. Default value is 1, values smaller than 1 will produce blurred images and values greater than 1 will produce sharpened images.
 
-### ```-c --contrast```
+### ```-c --combine```
+Use this flag to combine the 2 channels the satellites send to one
+
+### ```-C --contrast```
 Use this flag to add contrast enhancement to the output. Default valie is 1, values smaller than 1 will produce reduced contrast images and values greater than 1 will produce higher contrast images.
 
 ### ```-f --filter```
