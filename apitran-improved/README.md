@@ -41,7 +41,7 @@ And Python modules:
 
 ### Installation
 1. Clone ```apitran improved``` to your directory of choice. 
-2. Navigate to the ```./apitran-improved/``` and run ```pip install -r ./requirements.txt```
+2. Navigate to the ```./apitran-improved/``` directory and run ```pip install -r ./requirements.txt```
  
 
 ## Using ```apitran improved```
