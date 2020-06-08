@@ -12,6 +12,7 @@ import argparse
 from PIL import Image
 from PIL import ImageEnhance
 import imageio
+from scipy import fftpack
 
 class APT_signal(object):
     # The audio should get resampled to 20.8 kHz if not there natively
@@ -83,7 +84,11 @@ class APT_signal(object):
 
         # Take the Hilbert transform
         print("Taking Hilbert transform...")
-        signalHilbert = scipy.signal.hilbert(self.signal)
+        Siglenght = scipy.fftpack.next_fast_len(int(len(self.signal)))
+        padding = numpy.zeros((int(Siglenght)) - len(self.signal))
+        tohilbert = numpy.hstack((self.signal, padding))
+        signalHilbert = scipy.signal.hilbert(tohilbert)
+        signalHilbert = signalHilbert[0:len(self.signal)]
         print("Done.\n")
 
         # Median filter
@@ -220,7 +225,7 @@ if __name__ == '__main__':
         "-s", "--sharpen",
         help="Sharpen image, default = 1.0",
         action="store",
-        default="1.0",
+        default=float(1.0),
         dest="do_sharp"
     )
     #Add combining option
@@ -244,7 +249,7 @@ if __name__ == '__main__':
         "-C", "--contrast",
         help="Apply contrast adjustment, default value is 1.0",
         action="store",
-        default="1.0",
+        default=float(1.0),
         dest="do_contr"
     )
     # Add decode option
