@@ -40,7 +40,8 @@ And Python modules:
 * ```imageio```
 
 ### Installation
-Clone ```apitran improved``` to your directory of choice. 
+1. Clone ```apitran improved``` to your directory of choice. 
+2. Navigate to the ```./apitran-improved/``` and run ```pip install -r ./requirements.txt```
  
 
 ## Using ```apitran improved```
