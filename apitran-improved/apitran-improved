@@ -78,7 +78,7 @@ class APT_signal(object):
             lowcut = 2300
             highcut = 2500
             fs = 20800
-            print("Applying bandpass filter")
+            print("Applying signal filter...")
             signalButter = butter_bandpass_filter(self.signal, lowcut, highcut, fs)
             print("Done.\n")
 
@@ -131,7 +131,7 @@ class APT_signal(object):
 
         #Combine channels
         if not cmbn is None:
-            print("Combining the channels")
+            print("Combining the channels...")
             img = imageio.imread(outfile1)
             height, width = img.shape
             width_cutoff = width // 2
@@ -162,7 +162,7 @@ class APT_signal(object):
 
         #Contrast adjustment
         if not contr is float(1.0):
-            print("Contrast adjustment")
+            print("Contrast adjustment...")
             if not shrp is float(1.0):
                 contrast = Image.open(outfile + "_s.png")
             elif not cmbn is None:
