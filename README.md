@@ -64,11 +64,3 @@ Use this flag to add contrast enhancement to the output. Default valie is 1, val
 
 ### ```-f --filter```
 This flag will apply a bandpass filter to the signal before processing, this may improve image quality and remove artefacts in some cases.
-
-## Examples
-
-### Decoded from a 2-channel, 48000 Hz .wav
-![alt text](Examples/ex_2ch_48000.png)
-
-### Decoded from a 1-channel, 11025 Hz .wav
-![alt text](Examples/ex_1ch_11025.png)
